@@ -1,0 +1,583 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>進階公告產生器 - 可調整9-slice與模板圖片</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    #myCanvas {
+      border: 1px solid #ccc;
+      display: block;
+      margin-top: 10px;
+    }
+    .section {
+      margin-bottom: 1em;
+      padding: 0.5em;
+      border: 1px solid #ddd;
+    }
+    label {
+      display: inline-block;
+      width: 120px;
+      vertical-align: top;
+    }
+    .inline-block {
+      display: inline-block;
+      margin-right: 10px;
+    }
+    textarea {
+      width: 300px;
+      height: 80px;
+      vertical-align: top;
+    }
+  </style>
+</head>
+<body>
+  <h1>利姆諾斯基礎公告產生器 by下田</h1>
+
+  <!-- 公告尺寸設定 -->
+  <div class="section">
+    <h3>公告尺寸設定</h3>
+    <label for="widthInput">公告寬度：</label>
+    <input type="number" id="widthInput" value="1500">
+    <br><br>
+    <label for="heightInput">公告高度：</label>
+    <input type="number" id="heightInput" value="1500">
+  </div>
+
+  <!-- 9-slice 設定 -->
+  <div class="section">
+    <h3>9-slice 設定</h3>
+    <div class="inline-block">
+      <label for="cornerLeft">左側寬度：</label>
+      <input type="number" id="cornerLeft" value="200">
+    </div>
+    <div class="inline-block">
+      <label for="cornerTop">上側高度：</label>
+      <input type="number" id="cornerTop" value="200">
+    </div>
+    <div class="inline-block">
+      <label for="cornerRight">右側寬度：</label>
+      <input type="number" id="cornerRight" value="200">
+    </div>
+    <div class="inline-block">
+      <label for="cornerBottom">下側高度：</label>
+      <input type="number" id="cornerBottom" value="200">
+    </div>
+    <br><br>
+    <!-- 模板圖片選擇：若不選擇則使用預設圖片 -->
+    <label for="templateFile">選擇模板圖片：</label>
+    <input type="file" id="templateFile" accept="image/*">
+    <span>（若不選擇，則使用預設圖片。預設圖片的數值都設定好了! 如果想用其他模板底圖才需要再調整。）</span>
+  </div>
+
+  <!-- 標題設定 -->
+  <div class="section">
+    <h3>標題設定</h3>
+    <label for="titleInput">文字：</label>
+    <input type="text" id="titleInput" placeholder="輸入標題" value="公告標題示例">
+    <br><br>
+    <div class="inline-block">
+      <label for="titleFontSize">字體大小：</label>
+      <input type="number" id="titleFontSize" value="100">
+    </div>
+    <div class="inline-block">
+      <label for="titleColor">顏色：</label>
+      <input type="color" id="titleColor" value="#000000">
+    </div>
+    <div class="inline-block">
+      <label for="titleFontFamily">字型：</label>
+      <select id="titleFontFamily">
+        <option value="Arial" selected>Arial</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="sans-serif">sans-serif</option>
+        <option value="serif">serif</option>
+      </select>
+    </div>
+    <div class="inline-block">
+      <label for="titleAlign">對齊：</label>
+      <select id="titleAlign">
+        <option value="left">靠左</option>
+        <option value="center" selected>置中</option>
+        <option value="right">靠右</option>
+      </select>
+    </div>
+    <div class="inline-block">
+      <label for="titleBold">加粗(推薦)：</label>
+      <input type="checkbox" id="titleBold">
+    </div>
+  </div>
+
+  <!-- 內文設定 -->
+  <div class="section">
+    <h3>內文設定</h3>
+    <label for="bodyInput">文字：</label>
+    <textarea id="bodyInput" placeholder="輸入內文(可多行)"></textarea>
+    <br><br>
+    <div class="inline-block">
+      <label for="bodyFontSize">字體大小：</label>
+      <input type="number" id="bodyFontSize" value="60">
+    </div>
+    <div class="inline-block">
+      <label for="bodyColor">顏色：</label>
+      <input type="color" id="bodyColor" value="#000000">
+    </div>
+    <div class="inline-block">
+      <label for="bodyFontFamily">字型：</label>
+      <select id="bodyFontFamily">
+        <option value="Arial" selected>Arial</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="sans-serif">sans-serif</option>
+        <option value="serif">serif</option>
+      </select>
+    </div>
+    <div class="inline-block">
+      <label for="bodyAlign">對齊：</label>
+      <select id="bodyAlign">
+        <option value="left" >靠左</option>
+        <option value="center"selected>置中</option>
+        <option value="right">靠右</option>
+      </select>
+    </div>
+    <div class="inline-block">
+      <label for="bodyBold" >加粗：</label>
+      <input type="checkbox" id="bodyBold">
+    </div>
+  </div>
+
+  <!-- 按鈕區 -->
+  <button id="drawBtn">繪製公告</button>
+  <button id="downloadBtn">下載</button>
+   <span>(可能會失靈，可以直接右鍵圖片下載)</span>
+
+  <!-- 繪圖用的 Canvas -->
+  <canvas id="myCanvas" width="1500" height="1500"></canvas>
+
+  <script>
+    /***********************************************
+     * 預設模板圖片 (若使用者未選擇檔案時使用)
+     ***********************************************/
+    const DEFAULT_TEMPLATE_SRC = 'https://images.plurk.com/2KMR0KYOn5KZv9FmJOmsAt.png ';
+
+    // 取得 HTML 上的元素
+    const canvas = document.getElementById('myCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 尺寸設定
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+
+    // 9-slice 設定
+    const cornerLeftInput = document.getElementById('cornerLeft');
+    const cornerTopInput = document.getElementById('cornerTop');
+    const cornerRightInput = document.getElementById('cornerRight');
+    const cornerBottomInput = document.getElementById('cornerBottom');
+    const templateFile = document.getElementById('templateFile'); // 檔案輸入
+
+    // 標題設定
+    const titleInput = document.getElementById('titleInput');
+    const titleFontSize = document.getElementById('titleFontSize');
+    const titleColor = document.getElementById('titleColor');
+    const titleFontFamily = document.getElementById('titleFontFamily');
+    const titleAlign = document.getElementById('titleAlign');
+    const titleBold = document.getElementById('titleBold');
+
+    // 內文設定
+    const bodyInput = document.getElementById('bodyInput');
+    const bodyFontSize = document.getElementById('bodyFontSize');
+    const bodyColor = document.getElementById('bodyColor');
+    const bodyFontFamily = document.getElementById('bodyFontFamily');
+    const bodyAlign = document.getElementById('bodyAlign');
+    const bodyBold = document.getElementById('bodyBold');
+
+    // 按鈕設定
+    const drawBtn = document.getElementById('drawBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // 建立一個 Image 物件，用來載入模板圖
+    let templateImg = new Image();
+    // 初始先用預設圖片來源
+    templateImg.src = DEFAULT_TEMPLATE_SRC;
+
+    // 當圖片載入完成後，執行初次繪製
+    templateImg.onload = () => {
+      drawAnnouncement();
+    };
+
+    // 監聽「模板圖片」檔案輸入，讓使用者可選擇自己的模板圖片
+    templateFile.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          // 用使用者選擇的圖片取代預設模板
+          templateImg = new Image();
+          templateImg.src = evt.target.result;
+          templateImg.onload = function() {
+            drawAnnouncement();
+          };
+        }
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 監聽「繪製公告」按鈕
+    drawBtn.addEventListener('click', () => {
+      drawAnnouncement();
+    });
+
+    // 監聽「下載公告」按鈕
+    downloadBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'announcement.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    /**
+     * 主函式：繪製公告（包含 9-slice 與文字）
+     * - 先繪製公告底圖
+     * - 再將「標題 + 內文」做整體置中顯示
+     * - 並在標題與內文間，留「標題字級大小」的間距
+     */
+    function drawAnnouncement() {
+      // 取得使用者輸入的公告寬度與高度
+      const targetWidth = parseInt(widthInput.value, 10);
+      const targetHeight = parseInt(heightInput.value, 10);
+
+      // 設定 Canvas 寬高以符合輸出
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      // 以 9-slice 技術繪製公告底圖（使用使用者設定的四角尺寸）
+      draw9Slice(templateImg, ctx, targetWidth, targetHeight);
+
+      // 再將「標題 + 內文」整體置中繪製
+      drawTitleAndBodyCentered(ctx, targetWidth, targetHeight);
+    }
+
+    /**
+     * 9-slice 繪製函式（依照使用者設定的四角尺寸進行裁切與拉伸）
+     * @param {Image} img - 模板圖片
+     * @param {CanvasRenderingContext2D} ctx - canvas 的繪圖上下文
+     * @param {number} targetW - 輸出圖片寬度
+     * @param {number} targetH - 輸出圖片高度
+     */
+    function draw9Slice(img, ctx, targetW, targetH) {
+      // 讀取使用者輸入的四角尺寸（非拉伸區域）
+      const cornerLeft = parseInt(cornerLeftInput.value, 10);
+      const cornerTop = parseInt(cornerTopInput.value, 10);
+      const cornerRight = parseInt(cornerRightInput.value, 10);
+      const cornerBottom = parseInt(cornerBottomInput.value, 10);
+
+      // 取得原始圖片寬高
+      const w = img.width;
+      const h = img.height;
+
+      // 原圖中間可拉伸區域的寬度與高度
+      const centerWidth = w - cornerLeft - cornerRight;
+      const centerHeight = h - cornerTop - cornerBottom;
+
+      // 目標圖中間可拉伸區域的寬度與高度
+      const targetCenterWidth = targetW - cornerLeft - cornerRight;
+      const targetCenterHeight = targetH - cornerTop - cornerBottom;
+
+      // === 1. 上左角 (固定) ===
+      ctx.drawImage(
+        img,
+        0, 0,
+        cornerLeft, cornerTop,
+        0, 0,
+        cornerLeft, cornerTop
+      );
+
+      // === 2. 上邊 (水平拉伸) ===
+      ctx.drawImage(
+        img,
+        cornerLeft, 0,
+        centerWidth, cornerTop,
+        cornerLeft, 0,
+        targetCenterWidth, cornerTop
+      );
+
+      // === 3. 上右角 (固定) ===
+      ctx.drawImage(
+        img,
+        w - cornerRight, 0,
+        cornerRight, cornerTop,
+        targetW - cornerRight, 0,
+        cornerRight, cornerTop
+      );
+
+      // === 4. 左邊 (垂直拉伸) ===
+      ctx.drawImage(
+        img,
+        0, cornerTop,
+        cornerLeft, centerHeight,
+        0, cornerTop,
+        cornerLeft, targetCenterHeight
+      );
+
+      // === 5. 中間 (水平與垂直皆拉伸) ===
+      ctx.drawImage(
+        img,
+        cornerLeft, cornerTop,
+        centerWidth, centerHeight,
+        cornerLeft, cornerTop,
+        targetCenterWidth, targetCenterHeight
+      );
+
+      // === 6. 右邊 (垂直拉伸) ===
+      ctx.drawImage(
+        img,
+        w - cornerRight, cornerTop,
+        cornerRight, centerHeight,
+        targetW - cornerRight, cornerTop,
+        cornerRight, targetCenterHeight
+      );
+
+      // === 7. 下左角 (固定) ===
+      ctx.drawImage(
+        img,
+        0, h - cornerBottom,
+        cornerLeft, cornerBottom,
+        0, targetH - cornerBottom,
+        cornerLeft, cornerBottom
+      );
+
+      // === 8. 下邊 (水平拉伸) ===
+      ctx.drawImage(
+        img,
+        cornerLeft, h - cornerBottom,
+        centerWidth, cornerBottom,
+        cornerLeft, targetH - cornerBottom,
+        targetCenterWidth, cornerBottom
+      );
+
+      // === 9. 下右角 (固定) ===
+      ctx.drawImage(
+        img,
+        w - cornerRight, h - cornerBottom,
+        cornerRight, cornerBottom,
+        targetW - cornerRight, targetH - cornerBottom,
+        cornerRight, cornerBottom
+      );
+    }
+
+    /**
+     * wrapText：根據最大寬度將一段文字分解為多行
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {string} text - 單段文字
+     * @param {number} maxWidth - 最大寬度限制
+     * @returns {string[]} 回傳分解後的多行文字陣列
+     */
+    function wrapText(ctx, text, maxWidth) {
+      if (!maxWidth || maxWidth <= 0) return [text];
+      const words = text.split(' ');
+      let lines = [];
+      let currentLine = '';
+      for (let i = 0; i < words.length; i++) {
+        let testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
+        let testWidth = ctx.measureText(testLine).width;
+        if (testWidth > maxWidth && i > 0) {
+          lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    }
+
+    /**
+     * 量測「單行」文字區塊的寬度與高度
+     */
+    function measureSingleLineTextBlock(ctx, text, fontSize, fontFamily, bold) {
+      const weight = bold ? 'bold' : 'normal';
+      ctx.font = `${weight} ${fontSize}px ${fontFamily}`;
+      const textWidth = ctx.measureText(text).width;
+      const textHeight = fontSize; // 粗略以字體大小作高度
+      return { width: textWidth, height: textHeight };
+    }
+
+    /**
+     * 量測「多行」文字區塊的寬度與高度（含段落換行）
+     */
+    function measureMultiLineTextBlock(ctx, text, fontSize, fontFamily, bold, maxWidth, lineHeight) {
+      const weight = bold ? 'bold' : 'normal';
+      ctx.font = `${weight} ${fontSize}px ${fontFamily}`;
+
+      const paragraphs = text.split('\n');
+      const linesArr = []; // 用來記錄每個段落拆分後的多行字串
+      let totalLines = 0;
+      let maxLineWidth = 0;
+
+      paragraphs.forEach(paragraph => {
+        const lines = wrapText(ctx, paragraph, maxWidth);
+        linesArr.push(lines);
+        totalLines += lines.length;
+        lines.forEach(line => {
+          const lineWidth = ctx.measureText(line).width;
+          if (lineWidth > maxLineWidth) {
+            maxLineWidth = lineWidth;
+          }
+        });
+      });
+
+      const actualLineHeight = fontSize * (lineHeight || 1.2);
+      // 每個段落之間還會多 0.5 行的間距（見後面繪製程式）
+      // 因此段落數 - 1 個段落間距
+      const paragraphSpacing = (paragraphs.length - 1) * (actualLineHeight * 0.5);
+      const totalHeight = totalLines * actualLineHeight + paragraphSpacing;
+
+      return {
+        width: maxLineWidth,
+        height: totalHeight,
+        linesArr: linesArr,
+        fontSize,
+        fontFamily,
+        bold,
+        lineHeight
+      };
+    }
+
+    /**
+     * 將「標題 + 內文」整體在圖片中置中繪製，
+     * 並且「標題」與「內文」之間的間距 = 標題字級大小。
+     */
+    function drawTitleAndBodyCentered(ctx, targetWidth, targetHeight) {
+      // 取得使用者的輸入參數
+      const tText = titleInput.value;
+      const tSize = parseInt(titleFontSize.value, 10);
+      const tColor = titleColor.value;
+      const tFamily = titleFontFamily.value;
+      const tAlign = titleAlign.value;
+      const tBold = titleBold.checked;
+
+      const bText = bodyInput.value;
+      const bSize = parseInt(bodyFontSize.value, 10);
+      const bColor = bodyColor.value;
+      const bFamily = bodyFontFamily.value;
+      const bAlign = bodyAlign.value;
+      const bBold = bodyBold.checked;
+      const bLineHeight = 1.4; // 內文行高倍數
+      const spacing = tSize;  // 標題與內文之間的間距 = 標題字級
+
+      // 先量測「標題」單行文字
+      const titleMetrics = measureSingleLineTextBlock(ctx, tText, tSize, tFamily, tBold);
+      // 再量測「內文」多行文字
+      // maxWidth 先以「公告寬度 8 成」做包裝 (你也可再微調)
+      const bodyMaxWidth = targetWidth * 0.8;
+      const bodyMetrics = measureMultiLineTextBlock(ctx, bText, bSize, bFamily, bBold, bodyMaxWidth, bLineHeight);
+
+      // 整塊(標題 + 間距 + 內文)的寬與高
+      const totalWidth = Math.max(titleMetrics.width, bodyMetrics.width);
+      const totalHeight = titleMetrics.height + spacing + bodyMetrics.height;
+
+      // 計算要置中的起始 (左上角) 座標
+      const startX = (targetWidth - totalWidth) / 2;
+      const startY = (targetHeight - totalHeight) / 2;
+
+      // 1. 繪製「標題」單行文字
+      drawSingleLineTextBlockAtPosition(ctx, {
+        text: tText,
+        x: startX,
+        y: startY,
+        blockWidth: totalWidth, // 用來做行內對齊
+        fontSize: tSize,
+        fontFamily: tFamily,
+        bold: tBold,
+        color: tColor,
+        align: tAlign
+      });
+
+      // 2. 繪製「內文」多行文字
+      //    其起始 Y = 標題的高度 + spacing
+      const bodyStartY = startY + titleMetrics.height + spacing;
+      drawMultiLineTextBlockAtPosition(ctx, {
+        text: bText,
+        x: startX,
+        y: bodyStartY,
+        blockWidth: totalWidth,  // 用來做行內對齊
+        fontSize: bSize,
+        fontFamily: bFamily,
+        bold: bBold,
+        color: bColor,
+        align: bAlign,
+        lineHeight: bLineHeight
+      });
+    }
+
+    /**
+     * 在指定 (x, y) 顯示單行文字，但同時考慮 blockWidth 與 align 做水平對齊
+     */
+    function drawSingleLineTextBlockAtPosition(ctx, options) {
+      const {
+        text, x, y, blockWidth,
+        fontSize, fontFamily, bold, color, align
+      } = options;
+
+      const weight = bold ? 'bold' : 'normal';
+      ctx.font = `${weight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = color;
+      // 以頂部為基準
+      ctx.textBaseline = 'top';
+
+      // 量測文字實際寬度
+      const textWidth = ctx.measureText(text).width;
+      let drawX = x;
+      if (align === 'center') {
+        drawX = x + (blockWidth - textWidth) / 2;
+      } else if (align === 'right') {
+        drawX = x + (blockWidth - textWidth);
+      }
+      ctx.fillText(text, drawX, y);
+    }
+
+    /**
+     * 在指定 (x, y) 顯示多行文字（可自動換行），
+     * 同時考慮 blockWidth 與 align 做水平對齊
+     */
+    function drawMultiLineTextBlockAtPosition(ctx, options) {
+      const {
+        text, x, y, blockWidth,
+        fontSize, fontFamily, bold, color, align,
+        lineHeight
+      } = options;
+
+      const weight = bold ? 'bold' : 'normal';
+      ctx.font = `${weight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = color;
+      ctx.textBaseline = 'top';
+
+      // 先把多段文字拆分 & wrap
+      const paragraphs = text.split('\n');
+      const actualLineHeight = fontSize * (lineHeight || 1.2);
+
+      let currentY = y;
+
+      paragraphs.forEach((paragraph, pIndex) => {
+        const lines = wrapText(ctx, paragraph, blockWidth);
+        lines.forEach(lineStr => {
+          const lineWidth = ctx.measureText(lineStr).width;
+          let drawX = x;
+          if (align === 'center') {
+            drawX = x + (blockWidth - lineWidth) / 2;
+          } else if (align === 'right') {
+            drawX = x + (blockWidth - lineWidth);
+          }
+          ctx.fillText(lineStr, drawX, currentY);
+          currentY += actualLineHeight;
+        });
+        // 段落之間多留 0.5 行空白，但最後一段不用
+        if (pIndex < paragraphs.length - 1) {
+          currentY += actualLineHeight * 0.5;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
